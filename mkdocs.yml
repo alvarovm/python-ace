@@ -31,6 +31,7 @@ nav:
     - Pacemaker workflow: pacemaker/workflow.md
     - Extrapolation grade and active learning: pacemaker/active_learning.md
     - Input file: pacemaker/inputfile.md
+    - Multi-GPU tutorial: pacemaker/multi_gpu.md
     - CLI: pacemaker/cli.md
     - Utilities: pacemaker/utilities.md
     - FAQs: pacemaker/faq.md

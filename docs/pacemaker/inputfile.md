@@ -370,6 +370,8 @@ backend:
 
 Alternatively, backend could be selected as `pacemaker ... -b torchpot`
 
+For fits on several GPUs see the [multi-GPU tutorial](multi_gpu.md).
+
 ## Ladder (hiererchical) basis extension
 
 In a ladder scheme potential extension happens by adding new portion of basis functions step-by-step,

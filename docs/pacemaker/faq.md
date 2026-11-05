@@ -19,7 +19,7 @@ backend:
 ```
  - `gpu_ind`: index of the GPU you want to use for fitting. This need to be specified in case your
 machine has multiple GPUs. Set this parameter to -1 to disable GPU utilization. A list of indices fits on several
-GPUs at once (see [below](#can-i-fit-on-several-gpus)). Default is 0.
+GPUs at once (see [below](#can_i_fit_on_several_gpus)). Default is 0.
  - `mem_limit`: maximum amount of GPU memory in MB that is allowed to be used by fitting process. Default is 0 which 
 allows to consume the whole available memory.  
 NOTE: memory reserved by the fitting process is not available to anything else. Therefore, it's recommended to set this 
@@ -37,6 +37,7 @@ backend:
 `pacemaker` starts one worker process per additional GPU. The batches of the training set are spread over the GPUs
 (the batches themselves are the same as in a single-GPU fit, so loss, regularisation and metrics are unchanged, up to
 rounding), and only the coefficients and gradients are exchanged at every evaluation. `mem_limit` applies to each GPU.
+A step-by-step guide is in the [multi-GPU tutorial](multi_gpu.md).
 Notes:
 
  - It pays off only for large data sets: the evaluation of one batch is limited by kernel launches below about
