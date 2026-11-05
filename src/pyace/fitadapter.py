@@ -1,4 +1,5 @@
 import logging
+import os
 import numpy as np
 import pandas as pd
 import warnings
@@ -60,6 +61,13 @@ class FitBackendAdapter:
         self.metrics = None
         self.fit_metrics_callback = fit_metrics_callback
         self.test_metrics_callback = test_metrics_callback
+        self._pool = None  # worker processes of a multi-GPU `torchpot` fit (torchpotential.distributed.DevicePool)
+
+    def close(self):
+        """Stop the worker processes of a multi-GPU fit, if any."""
+        if self._pool is not None:
+            self._pool.close()
+            self._pool = None
 
     @property
     def evaluator_name(self):
@@ -104,6 +112,7 @@ class FitBackendAdapter:
                                                     trainable_parameters_dict,
                                                     test_dataframe=test_dataframe)
                     self.log_optimization_result()
+                    self._release_pool()
                     return fit_res
                 except Exception as e:
                     if not is_oom_error(e):
@@ -183,6 +192,15 @@ class FitBackendAdapter:
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+        self._release_pool()
+
+    def _release_pool(self):
+        """Free the batches held by the worker processes (they are set up again by the next fit)."""
+        if self._pool is not None:
+            try:
+                self._pool.release()
+            except Exception as e:
+                log.error("Can not release the worker processes: {}".format(e))
 
     def setup_torchpot(self, bbasisconfig: BBasisConfiguration, dataframe: pd.DataFrame,
                        loss_spec: LossFunctionSpecification,
@@ -191,7 +209,7 @@ class FitBackendAdapter:
         from torchpotential.potentials.ace import ACE
         from torchpotential.torchpot import TorchPotential
         from torchpotential.fit import FitTorchPotential
-        from torchpotential.utils.utilities import batching_data, init_gpu_config
+        from torchpotential.utils.utilities import batching_data, init_gpu_config, get_devices
         from torchpotential.utils.device import set_num_threads
         from torchpotential.constants import (LOSS_TYPE, LOSS_FORCE_FACTOR, LOSS_ENERGY_FACTOR, L1_REG,
                                               L2_REG, AUX_LOSS_FACTOR)
@@ -200,8 +218,17 @@ class FitBackendAdapter:
             warnings.filterwarnings("ignore", category=UserWarning)
 
             gpu_config = self.backend_config.get(BACKEND_GPU_CONFIG, None)
-            init_gpu_config(gpu_config)
-            set_num_threads(self.backend_config.get(BACKEND_NUM_THREADS_KW, None))
+            gpu_config = init_gpu_config(gpu_config)
+            devices = get_devices(gpu_config)
+            num_threads = self.backend_config.get(BACKEND_NUM_THREADS_KW, None)
+            if len(devices) > 1:
+                # one process per device: share the cores (the environment variable takes precedence, as usual)
+                env_threads = os.environ.get("TORCHPOTENTIAL_NUM_THREADS")
+                num_threads = int(env_threads) if env_threads else (
+                        num_threads or max(1, (os.cpu_count() or 1) // len(devices)))
+                log.info("Fitting on {} devices: {}".format(len(devices), [str(d) for d in devices]))
+            pool = self._get_device_pool(devices, num_threads, gpu_config.get("mem_limit", 0))
+            set_num_threads(num_threads)
             batch_size = self.backend_config.get(BACKEND_BATCH_SIZE_KW, 10)
             log.info("Loss function specification: " + str(loss_spec))
             log.info("Batch size: {}".format(batch_size))
@@ -232,10 +259,22 @@ class FitBackendAdapter:
             torchpotential = TorchPotential(ace_potential, loss_specs=loss_specs)
 
             display_step = self.backend_config.get('display_step', 20)
-            self.fitter = FitTorchPotential(torchpotential, display_step=display_step)
+            self.fitter = FitTorchPotential(torchpotential, display_step=display_step, pool=pool)
             # assign total_number_of_functions to fitter
             total_number_of_functions = bbasisconfig.total_number_of_functions
             self.fitter.nfuncs = total_number_of_functions
+
+    def _get_device_pool(self, devices, num_threads, mem_limit):
+        """Worker processes for a fit on several devices (reused while the setup is unchanged); None for one device."""
+        if len(devices) < 2:
+            self.close()
+            return None
+        if self._pool is not None and not self._pool.matches(devices, num_threads, mem_limit):
+            self.close()
+        if self._pool is None:
+            from torchpotential.distributed import DevicePool
+            self._pool = DevicePool(devices, num_threads=num_threads, mem_limit=mem_limit)
+        return self._pool
 
     def run_torchpot_fit(self, bbasisconfig: BBasisConfiguration, dataframe: pd.DataFrame,
                           loss_spec: LossFunctionSpecification, fit_config: Dict,

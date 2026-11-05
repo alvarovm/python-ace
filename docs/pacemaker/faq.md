@@ -18,12 +18,37 @@ backend:
   gpu_config: {gpu_ind: <int>, mem_limit: <int>}
 ```
  - `gpu_ind`: index of the GPU you want to use for fitting. This need to be specified in case your
-machine has multiple GPUs (multi GPU fitting is not supported at the moment). Set this parameter to -1 to disable GPU utilization.
-Default is 0.
+machine has multiple GPUs. Set this parameter to -1 to disable GPU utilization. A list of indices fits on several
+GPUs at once (see [below](#can-i-fit-on-several-gpus)). Default is 0.
  - `mem_limit`: maximum amount of GPU memory in MB that is allowed to be used by fitting process. Default is 0 which 
 allows to consume the whole available memory.  
 NOTE: memory reserved by the fitting process is not available to anything else. Therefore, it's recommended to set this 
 restriction if you also use the same machine for processes requiring GUI.
+
+## Can I fit on several GPUs?
+Yes, with the `torchpot` evaluator and a list of GPU indices:
+```yaml
+backend:
+  evaluator: torchpot
+  batch_size: 1000
+  num_threads: 4          # CPU threads per process (default: number of cores / number of GPUs)
+  gpu_config: {gpu_ind: [0, 1, 2, 3], mem_limit: 0}
+```
+`pacemaker` starts one worker process per additional GPU. The batches of the training set are spread over the GPUs
+(the batches themselves are the same as in a single-GPU fit, so loss, regularisation and metrics are unchanged, up to
+rounding), and only the coefficients and gradients are exchanged at every evaluation. `mem_limit` applies to each GPU.
+Notes:
+
+ - It pays off only for large data sets: the evaluation of one batch is limited by kernel launches below about
+30000 atoms, where a second GPU does not help. Use at least 4 batches per GPU (i.e. a smaller `batch_size`);
+`pacemaker` warns when there are too few batches.
+ - Supported optimizers: `BFGS`, `L-BFGS-B`, `CG` (and `dual_annealing`). `Adam`, `SGD`, `trf`, `dogbox` and `lm`
+are not available on several GPUs. The test set is evaluated on the first GPU only.
+ - Repeating an index (`gpu_ind: [0, 0]`) runs several processes on one GPU. The environment variable
+`TORCHPOTENTIAL_DEVICES=cuda:0,cuda:1` (also `cpu`) overrides `gpu_config`. `TORCHPOTENTIAL_DEVICE` (a single
+device) disables multi-GPU fitting.
+ - Linux/POSIX only. If a worker fails or dies, the fit stops with an error; out-of-memory errors of a worker trigger
+the usual `batch_size_reduction`.
 
 ## I dont have a GPU. Should I use backend, evaluator= `torchpot` or `pyace`?
 It is recommended to use `torchpot` evaluator for fitting anyways. Even without GPU acceleration non-linear 

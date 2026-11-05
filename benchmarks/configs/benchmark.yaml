@@ -1,0 +1,45 @@
+# Template of the pacemaker input used by bench_fit.py.
+# bench_fit.py fills in: potential.elements, data, fit.optimizer / maxiter / options and the backend section.
+# Everything else can be changed here, or replace this file with `--template my_input.yaml`
+# (a complete pacemaker input; the same keys are overridden).
+seed: 42
+
+metadata:
+  origin: "benchmarks/bench_fit.py"
+
+potential:
+  deltaSplineBins: 0.001
+  elements: []              # set from the dataset
+
+  embeddings:
+    ALL: {
+      npot: 'FinnisSinclairShiftedScaled',
+      fs_parameters: [ 1, 1, 1, 0.5 ],
+      ndensity: 2,
+    }
+
+  bonds:
+    ALL: {
+      radbase: SBessel,
+      radparameters: [ 5.25 ],
+      rcut: 5.0,
+      dcut: 0.01,
+      NameOfCutoffFunction: cos,
+    }
+
+  functions:
+    number_of_functions_per_element: 100
+    UNARY:   { nradmax_by_orders: [ 15, 6, 4, 3, 2, 2 ], lmax_by_orders: [ 0 , 3, 3, 2, 2, 1 ]}
+    BINARY:  { nradmax_by_orders: [ 15, 6, 3, 2, 2, 1 ], lmax_by_orders: [ 0 , 3, 2, 1, 1, 0 ]}
+    TERNARY: { nradmax_by_orders: [ 15, 3, 3, 2, 1 ],    lmax_by_orders: [ 0 , 2, 2, 1, 1 ], }
+    ALL:     { nradmax_by_orders: [ 15, 3, 2, 1, 1 ],    lmax_by_orders: [ 0 , 2, 2, 1, 1 ] }
+
+data: {}                    # set by bench_fit.py
+
+fit:
+  loss: { kappa: 0.3, L1_coeffs: 1e-8, L2_coeffs: 1e-8 }
+  optimizer: BFGS           # overridden by --optimizer
+  maxiter: 10               # overridden by --iterations
+
+backend:
+  evaluator: torchpot       # batch_size, num_threads, gpu_config and display_step are set by bench_fit.py

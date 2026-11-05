@@ -364,8 +364,8 @@ backend:
   # batch_size_reduction: True # automatic batch_size reduction if not enough memory (default - True) 
   # batch_size_reduction_factor: 1.618  # batch size reduction factor
   # display_step: 20          # frequency of detailed metric calculation and printing
-  # gpu_config: {gpu_ind: 0, mem_limit: 0}  # GPU index (-1 for CPU) and memory limit in MB
-  # num_threads: 4            # number of CPU threads used by PyTorch (default: all cores; env TORCHPOTENTIAL_NUM_THREADS takes precedence)
+  # gpu_config: {gpu_ind: 0, mem_limit: 0}  # GPU index (-1 for CPU; a list, e.g. [0, 1], fits on several GPUs) and memory limit in MB per GPU
+  # num_threads: 4            # number of CPU threads used by PyTorch per process (default: all cores, or cores / number of GPUs; env TORCHPOTENTIAL_NUM_THREADS takes precedence)
 ```
 
 Alternatively, backend could be selected as `pacemaker ... -b torchpot`
