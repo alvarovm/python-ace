@@ -154,7 +154,7 @@ class GeneralACEFit:
                     - ACEBBasisSet
     :param fit_config:  specification of fitting (loss function, number of iterations, weighting policy, ...)
     :param data_config:  training data specification
-    :param backend_config: specification of potential evaluation and fitting backend (pyace / tensorpot)
+    :param backend_config: specification of potential evaluation and fitting backend (pyace / torchpot)
                     - dict ['evaluator']
     :param cutoff: cutoff for the neighbour lists construction. If None (default), it is deduced from
                     `potential_config` as the maximum over the bonds' outer cutoffs `rcut`, which is what

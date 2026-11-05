@@ -87,7 +87,7 @@ fit:
 ## Backend specification section
 #################################################################
 backend:
-  evaluator: tensorpot
+  evaluator: torchpot
   batch_size: 100
   display_step: 50
 

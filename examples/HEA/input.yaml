@@ -86,7 +86,7 @@ fit:
 ## Backend specification section
 #################################################################
 backend:
-  evaluator: tensorpot  # tensorpot backend (recommended)
+  evaluator: torchpot  # torchpot backend (recommended)
   batch_size: 20
 
   ## frequency of detailed metric calculation and printing

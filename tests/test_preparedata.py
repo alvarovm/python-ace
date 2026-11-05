@@ -17,7 +17,7 @@ def test_ACEDataset():
         filename="df-FHI-aims_PBE_tight-Al-ref.pckl.gzip",
         datapath="tests",
     )
-    ace_ds = ACEDataset(data_config, evaluator_name='tensorpot', weighting_policy_spec=EnergyBasedWeightingPolicy())
+    ace_ds = ACEDataset(data_config, evaluator_name='torchpot', weighting_policy_spec=EnergyBasedWeightingPolicy())
 
     df0 = pd.read_pickle("tests/df-FHI-aims_PBE_tight-Al-ref.pckl.gzip", compression="gzip")
     assert "w_energy" not in df0

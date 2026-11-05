@@ -357,16 +357,18 @@ into `interim_potential_ladder_step_{LADDER_STEP}.yaml`.
 
 ```YAML
 backend:
-  evaluator: tensorpot
+  evaluator: torchpot       # `pyace` (C++, CPU) or `torchpot` (PyTorch, CPU/GPU); `tensorpot` is a deprecated alias of `torchpot`
 
-  ## for `tensorpot` evaluator, following options are available:
+  ## for `torchpot` evaluator, following options are available:
   # batch_size: 10            # batch size for loss function evaluation, default is 10
   # batch_size_reduction: True # automatic batch_size reduction if not enough memory (default - True) 
   # batch_size_reduction_factor: 1.618  # batch size reduction factor
   # display_step: 20          # frequency of detailed metric calculation and printing
+  # gpu_config: {gpu_ind: 0, mem_limit: 0}  # GPU index (-1 for CPU) and memory limit in MB
+  # num_threads: 4            # number of CPU threads used by PyTorch (default: all cores; env TORCHPOTENTIAL_NUM_THREADS takes precedence)
 ```
 
-Alternatively, backend could be selected as `pacemaker ... -b tensorpot`
+Alternatively, backend could be selected as `pacemaker ... -b torchpot`
 
 ## Ladder (hiererchical) basis extension
 

@@ -14,19 +14,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
-        tensorflow-version: ["2.20.0", "2.21.0"]
-        include:
-          - python-version: "3.9"
-            tensorflow-version: "2.20.0"
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
 
     env:
       CUDA_VISIBLE_DEVICES: "-1"
-      TF_USE_LEGACY_KERAS: "1"
+      TORCHPOTENTIAL_DEVICE: "cpu"
       CMAKE_BUILD_PARALLEL_LEVEL: "2"
       OMP_NUM_THREADS: "2"
-      TF_NUM_INTRAOP_THREADS: "2"
-      TF_NUM_INTEROP_THREADS: "2"
 
     steps:
     - uses: actions/checkout@v4
@@ -38,25 +32,25 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install pytest
-    - name: Checkout current tensorpotential with PACE compatibility
+    - name: Checkout torchpotential
       uses: actions/checkout@v4
       with:
-        repository: ICAMS/grace-tensorpotential
-        # Includes the NumPy scalar fix and TensorFlow 2.21 bound from PR #43.
-        ref: 9ccb9090f53292a836cbbc3de4cadcae54c7ce1a
-        path: tensorpotential
-    - name: Install tensorpotential
+        # configure these repository variables (Settings -> Variables) for the repository hosting TorchPotential
+        repository: ${{ vars.TORCHPOTENTIAL_REPOSITORY }}
+        ref: ${{ vars.TORCHPOTENTIAL_REF || 'main' }}
+        path: torchpotential
+    - name: Install torchpotential (CPU-only PyTorch)
       run: |
-        cd tensorpotential
-        python -m pip install "tensorflow==${{ matrix.tensorflow-version }}" "tf-keras~=${{ matrix.tensorflow-version }}" .
+        python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+        python -m pip install ./torchpotential
     - name: Install python-ace
       run: |    
         python -m pip install .
-    - name: Test with python-ace with tensorpotential
+    - name: Test python-ace with torchpotential
       run: |
         python -m pip check
-        python -c 'import pyace, tensorpotential, tensorflow as tf, numpy as np; print("Versions:", pyace.__version__, tensorpotential.__version__, tf.__version__, np.__version__)'
-        python -m pytest tests/ --runtensorpot
+        python -c 'import pyace, torchpotential, torch, numpy as np; print("Versions:", pyace.__version__, torchpotential.__version__, torch.__version__, np.__version__)'
+        python -m pytest tests/ --runtorchpot
     - name: Integration test of CLI
       run: |
         cd tests/test-CLI/Cu-I && sh integration_test.sh

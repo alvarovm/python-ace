@@ -18,17 +18,19 @@ pip install --upgrade python-ace
 
 Wheels are available for Linux, Apple Silicon, and Intel Macs.
 
-## Add the GRACE fitting backend
+## Add the PyTorch fitting backend
 
-On Linux or Apple Silicon, install:
+Fitting (`backend: {evaluator: torchpot}`) uses PyTorch through the separate
+`torchpotential` package. Install PyTorch first (pick the build matching your
+platform and CUDA driver on <https://pytorch.org>), then `torchpotential`:
 
 ```bash
-pip install --upgrade tensorpotential 'numpy<2.4'
+pip install torch
+pip install ./TorchPotential     # path of the torchpotential sources
 ```
 
-GRACE is published as `tensorpotential`; pip selects its TensorFlow and Keras
-dependencies. The NumPy upper bound works around a fitting bug in the current
-GRACE release.
+All fitting computations are done in double precision. The `pyace` evaluator
+(`backend: {evaluator: pyace}`) does not need PyTorch.
 
 ## Check the installation
 
@@ -37,7 +39,9 @@ pip check
 pacemaker --help
 ```
 
-On Linux, GPU fitting requires a compatible NVIDIA driver. To use the CPU, set
-`CUDA_VISIBLE_DEVICES=-1` before starting pacemaker.
+On Linux, GPU fitting requires a compatible NVIDIA driver and a CUDA build of
+PyTorch (`python -c "import torch; print(torch.cuda.is_available())"`). To use
+the CPU, set `CUDA_VISIBLE_DEVICES=-1` (or `backend: {gpu_config: {gpu_ind: -1}}`)
+before starting pacemaker.
 
 Continue with the [quick start](quickstart.md) to prepare data and run a fit.

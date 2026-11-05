@@ -28,6 +28,7 @@ logging.basicConfig(level=logging.INFO, format=LOG_FMT, datefmt="%Y/%m/%d %H:%M:
 log = logging.getLogger()
 
 from shutil import copyfile
+from pyace.const import TORCHPOT_EVAL
 from pyace.generalfit import GeneralACEFit
 from pyace.preparedata import sizeof_fmt
 from pyace import __version__, get_ace_evaluator_version
@@ -99,15 +100,13 @@ def main(args=None):
     parser.add_argument("--no-predict", help="Do not compute and save the predictions", dest="no_predict",
                         action="store_true", default=False)
 
-    parser.add_argument("--verbose-tf", help="Make tensorflow more verbose (off by default)",
+    # TensorFlow is no longer used; the option is accepted (and ignored) so that existing scripts keep working
+    parser.add_argument("--verbose-tf", help=argparse.SUPPRESS,
                         dest="verbose_tf", action="store_true", default=False
                         )
     args_parse = parser.parse_args(args)
 
     input_yaml_filename = args_parse.input
-
-    if not args_parse.verbose_tf:
-        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
     if args_parse.version:
         print("pacemaker/pyace version: {}".format(__version__))
@@ -206,7 +205,7 @@ def main(args=None):
     else:
         backend_config['evaluator'] = 'pyace'
         evaluator_name = backend_config['evaluator']
-        log.info("Couldn't find evaluator ('pyace' or 'tensorpot').")
+        log.info("Couldn't find evaluator ('pyace' or 'torchpot').")
         log.info("Default evaluator `{}` would be used, ".format(evaluator_name) +
                  " otherwise please specify in YAML:backend:evaluator or as -b <evaluator>")
 
@@ -381,7 +380,7 @@ def predict_and_save(general_fit, target_bbasisconfig, structures_dataframe, fna
     if general_fit.evaluator_name == "pyace" and "atomic_env" in structures_dataframe.columns:
         log.info("Computing nearest neighbours distances from 'atomic_env'")
         structures_dataframe["nn_min"] = structures_dataframe["atomic_env"].map(calculate_minimal_nn_atomic_env)
-    elif general_fit.evaluator_name == "tensorpot" and "tp_atoms" in structures_dataframe.columns:
+    elif general_fit.evaluator_name == TORCHPOT_EVAL and "tp_atoms" in structures_dataframe.columns:
         log.info("Computing nearest neighbours distances from 'tp_atoms'")
         structures_dataframe["nn_min"] = structures_dataframe["tp_atoms"].map(calculate_minimal_nn_tp_atoms)
     else:

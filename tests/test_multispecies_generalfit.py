@@ -139,7 +139,7 @@ def test_randomize_func_coeffs():
 
 def test_GeneralACEFit_pyace_fit():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
         "parallel_mode": "serial",
     }
     fit_config = test_fit_config_L1_L2.copy()
@@ -175,7 +175,7 @@ def test_GeneralACEFit_pyace_fit():
 
 def test_GeneralACEFit_pyace_ladder_cycle_noise_fit_trainable_parameters():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
         "parallel_mode": "serial",
     }
     fit_config = test_fit_config_L1_L2.copy()
@@ -206,10 +206,10 @@ def test_GeneralACEFit_pyace_ladder_cycle_noise_fit_trainable_parameters():
     assert np.allclose(all_coeffs, expected_all_coeffs)
 
 
-@pytest.mark.tensorpot
-def test_GeneralACEFit_tensorpot_fit():
+@pytest.mark.torchpot
+def test_GeneralACEFit_torchpot_fit():
     backend_config = {
-        'evaluator': 'tensorpot',  # pyace, tensorpot
+        'evaluator': 'torchpot',  # pyace, torchpot
     }
     fit_config = test_fit_config_L1_L2.copy()
     fit_config["options"] = {"gtol": 1e6}
@@ -220,7 +220,7 @@ def test_GeneralACEFit_tensorpot_fit():
                            fit_config=fit_config,
                            backend_config=backend_config, seed=42)
     bbasisconfig = fitace.fit()
-    bbasisconfig.save("test_GeneralACEFit_tensorpot_fit.yaml")
+    bbasisconfig.save("test_GeneralACEFit_torchpot_fit.yaml")
 
     all_coeffs = np.array(bbasisconfig.get_all_coeffs())
     print("all_coeffs=", all_coeffs)
@@ -241,7 +241,7 @@ def test_GeneralACEFit_tensorpot_fit():
         0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
         0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     assert np.allclose(all_coeffs, expected_all_coeffs)
-    bbasisconfig = BBasisConfiguration("test_GeneralACEFit_tensorpot_fit.yaml")
+    bbasisconfig = BBasisConfiguration("test_GeneralACEFit_torchpot_fit.yaml")
 
 
 def get_block_params_dict(basisconf):
@@ -258,7 +258,7 @@ def get_block_params_dict(basisconf):
 
 def test_GeneralACEFit_pyace_Al_fit_func():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
         "parallel_mode": "serial",
     }
     fit_config = test_fit_config_L1_L2.copy()
@@ -287,7 +287,7 @@ def test_GeneralACEFit_pyace_Al_fit_func():
 
 def test_GeneralACEFit_pyace_AlNi_fit_trainable_binary():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
         "parallel_mode": "serial",
     }
     fit_config = test_fit_config_L1_L2.copy()
@@ -320,7 +320,7 @@ def test_GeneralACEFit_pyace_AlNi_fit_trainable_binary():
 
 def test_GeneralACEFit_pyace_AlNi_fit_trainable_AlNi_func():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
         "parallel_mode": "serial",
     }
     fit_config = test_fit_config_L1_L2.copy()
@@ -351,10 +351,10 @@ def test_GeneralACEFit_pyace_AlNi_fit_trainable_AlNi_func():
     assert np.allclose(new_params_dict["Ni"]["func"], old_params_dict["Ni"]["func"])
 
 
-@pytest.mark.tensorpot
-def test_GeneralACEFit_tensorpot_AlNi_fit_trainable_binary():
+@pytest.mark.torchpot
+def test_GeneralACEFit_torchpot_AlNi_fit_trainable_binary():
     backend_config = {
-        'evaluator': 'tensorpot',  # pyace, tensorpot
+        'evaluator': 'torchpot',  # pyace, torchpot
     }
     fit_config = test_fit_config_L1_L2.copy()
     fit_config["maxiter"] = 3

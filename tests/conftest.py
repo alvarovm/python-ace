@@ -5,18 +5,19 @@ import pytest
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--runtensorpot", action="store_true", default=False, help="run tensorpot tests"
+        "--runtorchpot", "--runtensorpot", action="store_true", default=False, dest="runtorchpot",
+        help="run tests that need the PyTorch fitting backend (torchpotential); `--runtensorpot` is a deprecated alias"
     )
 
 
 def pytest_configure(config):
-    config.addinivalue_line("markers", "tensorpot: mark test needs tensorpot to run")
+    config.addinivalue_line("markers", "torchpot: mark test needs torchpotential (PyTorch backend) to run")
 
 
 def pytest_collection_modifyitems(config, items):
-    if config.getoption("--runtensorpot"):
+    if config.getoption("runtorchpot"):
         return
-    skip_tensorpot = pytest.mark.skip(reason="need --runtensorpot option to run")
+    skip_torchpot = pytest.mark.skip(reason="need --runtorchpot option to run")
     for item in items:
-        if "tensorpot" in item.keywords:
-            item.add_marker(skip_tensorpot)
+        if "torchpot" in item.keywords:
+            item.add_marker(skip_torchpot)

@@ -7,6 +7,7 @@ POTENTIAL_RANKMAX_KW = 'rankmax'
 BACKEND_NWORKERS_KW = "n_workers"
 BACKEND_PARALLEL_MODE_KW = "parallel_mode"
 BACKEND_GPU_CONFIG = "gpu_config"
+BACKEND_NUM_THREADS_KW = "num_threads"
 POTENTIAL_METADATA_KW = "metadata"
 POTENTIAL_DELTASPLINEBINS_KW = "deltaSplineBins"
 POTENTIAL_RADCOEFFICIENTS_KW = "radcoefficients"
@@ -32,7 +33,16 @@ ORDERS_LMAX_KW = "lmax_by_orders"
 ATOMIC_ENV_DF_COLUMN = "atomic_env"
 TP_ATOMS_DF_COLUMN = "tp_atoms"
 PYACE_EVAL = 'pyace'
-TENSORPOT_EVAL = 'tensorpot'
+TORCHPOT_EVAL = 'torchpot'  # PyTorch-based fitting backend (package `torchpotential`)
+TENSORPOT_EVAL = 'tensorpot'  # deprecated name of the (removed) TensorFlow backend, now an alias of TORCHPOT_EVAL
+
+
+def normalize_evaluator_name(evaluator_name):
+    """Map the deprecated `tensorpot` evaluator name onto `torchpot`; other names are returned unchanged."""
+    if evaluator_name == TENSORPOT_EVAL:
+        return TORCHPOT_EVAL
+    return evaluator_name
+
 ENERGYBASED_WEIGHTING_POLICY = "EnergyBasedWeightingPolicy"
 EXTERNAL_WEIGHTING_POLICY = "ExternalWeightingPolicy"
 WEIGHTING_TYPE_KW = "type"

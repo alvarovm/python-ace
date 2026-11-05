@@ -10,9 +10,6 @@ from pyace.generalfit import GeneralACEFit, active_import
 from pyace.basisextension import construct_bbasisconfiguration
 import pandas as pd
 
-TENSORPOTENTIAL_IMPORTED = True
-# TENSORPOTENTIAL_IMPORTED = False
-
 test_fit_config_L1_L2 = {
     'optimizer': 'L-BFGS-B',  # Nelder-Mead #BFGS
     'maxiter': 5,
@@ -147,7 +144,7 @@ def compare_coefficients(all_coeffs, all_coeffs_ref, abs_threshold=2e-7, rel_thr
 
 def test_GeneralACEFit_pyace_fit_options():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
         "parallel_mode": "serial",
     }
     fit_config = test_fit_config_L1_L2.copy()
@@ -174,7 +171,7 @@ def test_GeneralACEFit_pyace_fit_options():
 
 def test_GeneralACEFit_pyace_fit_func_coefs_init_random():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
         "parallel_mode": "serial",
     }
     fit_config = test_fit_config_L1_L2.copy()
@@ -199,7 +196,7 @@ def test_GeneralACEFit_pyace_fit_func_coefs_init_random():
 
 def test_GeneralACEFit_pyace_core_rep():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
         "parallel_mode": "serial",
     }
     fit_config = test_fit_config_L1_L2.copy()
@@ -249,7 +246,7 @@ def test_GeneralACEFit_pyace_core_rep():
 
 def test_GeneralACEFit_pyace_continue_with_core_rep():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
         "parallel_mode": "serial",
     }
     fit_config = test_fit_config_L1_L2.copy()
@@ -305,7 +302,7 @@ def test_GeneralACEFit_pyace_continue_with_core_rep():
 
 def test_GeneralACEFit_save_fitting_data_info():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
         "parallel_mode": "serial",
     }
     fit_config_cycles = test_fit_config_L1_L2.copy()
@@ -335,7 +332,7 @@ def test_GeneralACEFit_save_fitting_data_info():
 
 def test_GeneralACEFit_fit_cycles_relative_noise():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
         "parallel_mode": "serial",
     }
     fit_config_cycles = test_fit_config_L1_L2.copy()
@@ -361,7 +358,7 @@ def test_GeneralACEFit_fit_cycles_relative_noise():
 
 def test_GeneralACEFit_fit_cycles_absolute_noise():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
         "parallel_mode": "serial",
     }
     fit_config_cycles = test_fit_config_L1_L2.copy()
@@ -387,7 +384,7 @@ def test_GeneralACEFit_fit_cycles_absolute_noise():
 
 def test_GeneralACEFit_dataset_with_weights_column():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
         "parallel_mode": "serial",
     }
     fit_config_cycles = test_fit_config_L1_L2.copy()
@@ -412,7 +409,7 @@ def test_GeneralACEFit_dataset_with_weights_column():
 
 def test_GeneralACEFit_dataset_with_weights_column_force_weights_recalc():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
         "parallel_mode": "serial",
     }
     fit_config_cycles = test_fit_config_L1_L2.copy()
@@ -436,7 +433,7 @@ def test_GeneralACEFit_dataset_with_weights_column_force_weights_recalc():
 
 def test_GeneralACEFit_pyace_L1_L2():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
         "parallel_mode": "serial",
     }
 
@@ -472,7 +469,7 @@ all_coeffs_rad_smoothness = np.array(
 
 def test_GeneralACEFit_pyace_loss_rad():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
         "parallel_mode": "serial",
     }
 
@@ -491,10 +488,10 @@ def test_GeneralACEFit_pyace_loss_rad():
     compare_coefficients(all_coeffs, all_coeffs_rad_smoothness, abs_threshold=2e-6, rel_threshold=1e-2)
 
 
-@pytest.mark.tensorpot
-def test_GeneralACEFit_tensorpot_core_rep():
+@pytest.mark.torchpot
+def test_GeneralACEFit_torchpot_core_rep():
     backend_config = {
-        'evaluator': 'tensorpot',
+        'evaluator': 'torchpot',
     }
     fit_config = test_fit_config_L1_L2.copy()
     fit_config["options"] = {"gtol": 1e6}
@@ -528,10 +525,10 @@ def test_GeneralACEFit_tensorpot_core_rep():
     assert block.drho_cut == 20
 
 
-@pytest.mark.tensorpot
-def test_GeneralACEFit_tensorpot_fit_options():
+@pytest.mark.torchpot
+def test_GeneralACEFit_torchpot_fit_options():
     backend_config = {
-        'evaluator': 'tensorpot',  # pyace, tensorpot
+        'evaluator': 'torchpot',  # pyace, torchpot
     }
     fit_config = test_fit_config_L1_L2.copy()
     fit_config["options"] = {"gtol": 1e6}
@@ -555,13 +552,11 @@ def test_GeneralACEFit_tensorpot_fit_options():
                          rel_threshold=None)
 
 
-@pytest.mark.tensorpot
-def test_GeneralACEFit_tensorpot_L1_L2():
-    if not TENSORPOTENTIAL_IMPORTED:
-        pytest.fail()
+@pytest.mark.torchpot
+def test_GeneralACEFit_torchpot_L1_L2():
     # Fit config
     backend_config = {
-        'evaluator': 'tensorpot',  # pyace, tensorpot
+        'evaluator': 'torchpot',  # pyace, torchpot
     }
 
     fitace = GeneralACEFit(potential_config=test_potential_config, data_config=test_data_config,
@@ -576,12 +571,10 @@ def test_GeneralACEFit_tensorpot_L1_L2():
     compare_coefficients(all_coeffs, all_coeffs_ref_L1_L2, abs_threshold=0.005, rel_threshold=None)
 
 
-@pytest.mark.tensorpot
-def test_GeneralACEFit_tensorpot_loss_rad():
-    if not TENSORPOTENTIAL_IMPORTED:
-        pytest.fail()
+@pytest.mark.torchpot
+def test_GeneralACEFit_torchpot_loss_rad():
     backend_config = {
-        'evaluator': 'tensorpot',  # pyace, tensorpot
+        'evaluator': 'torchpot',  # pyace, torchpot
     }
 
     fitace = GeneralACEFit(potential_config=test_potential_config,
@@ -606,7 +599,7 @@ all_coeffs_bbasis_yaml = [1.0156768899086037, 7.0045191654986985, 0.181025460044
 
 def test_GeneralACEFit_pyace_BBasis_yaml():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
         "parallel_mode": "serial",
     }
     bbasis = ACEBBasisSet("tests/Al-r1234l12_crad_dif_2.yaml")
@@ -621,12 +614,10 @@ def test_GeneralACEFit_pyace_BBasis_yaml():
     compare_coefficients(all_coeffs, all_coeffs_bbasis_yaml, abs_threshold=7e-6, rel_threshold=2e-5)
 
 
-@pytest.mark.tensorpot
-def test_GeneralACEFit_tensorpot_BBasis_yaml():
-    if not TENSORPOTENTIAL_IMPORTED:
-        pytest.fail()
+@pytest.mark.torchpot
+def test_GeneralACEFit_torchpot_BBasis_yaml():
     backend_config = {
-        'evaluator': 'tensorpot',  # pyace, tensorpot
+        'evaluator': 'torchpot',  # pyace, torchpot
         'batch_size': 2
     }
     bbasis = ACEBBasisSet("tests/Al-r1234l12_crad_dif_2.yaml")
@@ -636,7 +627,7 @@ def test_GeneralACEFit_tensorpot_BBasis_yaml():
 
     bbasisconfig = fitace.target_bbasisconfig
     print(bbasisconfig)
-    bbasisconfig.save("test_tensorpot_pot3.yaml")
+    bbasisconfig.save("test_torchpot_pot3.yaml")
     all_coeffs = bbasisconfig.get_all_coeffs()
     compare_coefficients(all_coeffs, all_coeffs_bbasis_yaml, abs_threshold=2e-6, rel_threshold=6e-6)
 
@@ -722,7 +713,7 @@ all_coeffs_ref_weighting = [1.0209968271570045, 7.005161495282142, 0.24169719971
 
 def test_GeneralACEFit_pyace_weighting():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
         "parallel_mode": "serial",
     }
     bbasis = ACEBBasisSet("tests/Al-r1234l12_crad_dif_2.yaml")
@@ -738,13 +729,11 @@ def test_GeneralACEFit_pyace_weighting():
     compare_coefficients(all_coeffs, all_coeffs_ref_weighting, abs_threshold=3e-6, rel_threshold=6e-6)
 
 
-@pytest.mark.tensorpot
-def test_GeneralACEFit_tensorpot_weighting():
-    if not TENSORPOTENTIAL_IMPORTED:
-        pytest.fail()
+@pytest.mark.torchpot
+def test_GeneralACEFit_torchpot_weighting():
 
     backend_config = {
-        'evaluator': 'tensorpot',  # pyace, tensorpot
+        'evaluator': 'torchpot',  # pyace, torchpot
     }
     bbasis = ACEBBasisSet("tests/Al-r1234l12_crad_dif_2.yaml")
     fitace = GeneralACEFit(potential_config=bbasis,
@@ -798,7 +787,7 @@ ladder_fit_config = {
 
 def test_GeneralACEFit_pyace_ladderscheme():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
     }
 
     # remove and check that there are no interim potentials
@@ -830,7 +819,7 @@ def test_GeneralACEFit_pyace_ladderscheme():
 
 def test_GeneralACEFit_pyace_ladderscheme_initial_potential():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
     }
 
     ladder_potential_config_init = ladder_potential_config.copy()
@@ -854,10 +843,10 @@ def test_GeneralACEFit_pyace_ladderscheme_initial_potential():
                          )
 
 
-@pytest.mark.tensorpot
-def test_GeneralACEFit_tensorpot_ladderscheme_initial_potential():
+@pytest.mark.torchpot
+def test_GeneralACEFit_torchpot_ladderscheme_initial_potential():
     backend_config = {
-        'evaluator': 'tensorpot',  # pyace, tensorpot
+        'evaluator': 'torchpot',  # pyace, torchpot
     }
 
     ladder_potential_config_init = ladder_potential_config.copy()
@@ -883,7 +872,7 @@ def test_GeneralACEFit_tensorpot_ladderscheme_initial_potential():
 
 def test_GeneralACEFit_save_interim_potentials_callback():
     backend_config = {
-        'evaluator': 'pyace',  # pyace, tensorpot
+        'evaluator': 'pyace',  # pyace, torchpot
         "parallel_mode": "serial",
     }
     fit_config_cycles = test_fit_config_L1_L2.copy()

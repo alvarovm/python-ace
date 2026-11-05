@@ -3,7 +3,7 @@
 `pacemaker` is a utility for fitting the atomic cluster expansion potential. Usage:
 
 ```
-usage: pacemaker [-h] [-c] [-o OUTPUT] [-p POTENTIAL] [-ip INITIAL_POTENTIAL] [-d DATA] [-l LOG] [-dr] [-t] [-v] [--no-fit] [--no-predict] [--verbose-tf] [input]
+usage: pacemaker [-h] [-c] [-o OUTPUT] [-p POTENTIAL] [-ip INITIAL_POTENTIAL] [-d DATA] [-l LOG] [-dr] [-t] [-v] [--no-fit] [--no-predict] [input]
 
 Fitting utility for atomic cluster expansion potentials.
 
@@ -26,6 +26,5 @@ optional arguments:
   -v, --version         Show version info
   --no-fit              Do not fit the potential
   --no-predict          Do not compute and save the predictions
-  --verbose-tf          Make tensorflow more verbose (off by defeault)
 
 ``` 

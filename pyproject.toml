@@ -31,11 +31,10 @@ authors = [
 ]
 description = 'Python bindings, utilities  for PACE and fitting code "pacemaker"'
 readme = "README.md"
-# Matches grace-tensorpotential, which pyace must stay installable beside.
 # Deliberately no upper bound: a ceiling here would apply to the resolver
 # forever, making an already-published release unselectable on a python it
 # would actually work on. Where the limit is real it is enforced already --
-# tensorflow publishes no wheels for unsupported pythons.
+# torch publishes no wheels for unsupported pythons.
 requires-python = ">=3.9"
 license = "LicenseRef-Academic-Software-License"
 license-files = ["LICENSE.md", "src/pyace/maxvol/LICENSE.maxvolpy.txt"]
@@ -47,7 +46,7 @@ classifiers = [
 dependencies = [
     # Upper bounds follow master (numpy<3, pandas>=2,<4, scikit-learn<2), which
     # widened them from the old numpy<=1.26.4 / pandas<=2.0 / scikit-learn<=1.4.2.
-    # numpy<3 also matches grace-tensorpotential. The >=2.0 floor is this
+    # numpy<3 also matches torchpotential. The >=2.0 floor is this
     # branch's own (a7e19fa); note it makes the numpy-1.x compat shims master
     # carries in radial.py unreachable, so they are dropped here.
     "numpy>=2.0,<3",
@@ -58,6 +57,11 @@ dependencies = [
     "scikit-learn<2",
     "scipy",
 ]
+
+[project.optional-dependencies]
+# PyTorch fitting backend (`backend: {evaluator: torchpot}`). `torchpotential` itself is distributed separately
+# (it lives outside this repository) and has to be installed in addition to this extra.
+torch = ["torch>=2.4"]
 
 [project.urls]
 "Homepage" = "https://github.com/ICAMS/python-ace"

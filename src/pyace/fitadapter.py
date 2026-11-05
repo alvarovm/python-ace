@@ -31,7 +31,13 @@ class BackendConfig:
         self.backend_config_dict[key] = value
 
     def validate(self):
-        pass
+        evaluator = self.backend_config_dict.get(BACKEND_EVALUATOR_KW)
+        if evaluator == TENSORPOT_EVAL:
+            warnings.warn("backend evaluator '{}' is deprecated and now uses the PyTorch implementation, "
+                          "please use '{}' instead".format(TENSORPOT_EVAL, TORCHPOT_EVAL), DeprecationWarning)
+            log.warning("backend evaluator '{}' is deprecated and now uses the PyTorch implementation, "
+                        "please use '{}' instead".format(TENSORPOT_EVAL, TORCHPOT_EVAL))
+            self.backend_config_dict[BACKEND_EVALUATOR_KW] = normalize_evaluator_name(evaluator)
 
     def get(self, item, default_value=None):
         return self.backend_config_dict.get(item, default_value)
@@ -88,45 +94,50 @@ class FitBackendAdapter:
         self.trainable_parameters_dict = trainable_parameters_dict
         self.bbasisconfig = bbasisconfig
 
-        if self.backend_config.evaluator_name == TENSORPOT_EVAL:
-            from tensorflow.python.framework.errors_impl import ResourceExhaustedError, InternalError
+        if self.backend_config.evaluator_name == TORCHPOT_EVAL:
+            from torchpotential.utils.device import is_oom_error
             while True:
+                oom_message = None
                 try:
-                    self.setup_tensorpot(bbasisconfig, dataframe, loss_spec, trainable_parameters_dict)
-                    fit_res = self.run_tensorpot_fit(bbasisconfig, dataframe, loss_spec, fit_config,
-                                                     trainable_parameters_dict,
-                                                     test_dataframe=test_dataframe)
+                    self.setup_torchpot(bbasisconfig, dataframe, loss_spec, trainable_parameters_dict)
+                    fit_res = self.run_torchpot_fit(bbasisconfig, dataframe, loss_spec, fit_config,
+                                                    trainable_parameters_dict,
+                                                    test_dataframe=test_dataframe)
                     self.log_optimization_result()
                     return fit_res
-                except (ResourceExhaustedError, InternalError) as e:
-                    log.error("{} errors encountered".format(e))
-                    if self.backend_config.get(BACKEND_BATCH_SIZE_REDUCTION_KW, True):
-                        batch_size = self.backend_config.get(BACKEND_BATCH_SIZE_KW, 10)
-                        batch_size_reduction_factor = self.backend_config.get(BACKEND_BATCH_SIZE_REDUCTION_FACTOR_KW,
-                                                                              1.618)  # default - golden ratio
-                        new_batch_size = int(batch_size / batch_size_reduction_factor)
-                        log.info("Decrease batch size (by factor {}): {} -> {}".format(batch_size_reduction_factor,
-                                                                                       batch_size, new_batch_size))
-                        if new_batch_size < 1:
-                            log.error("New batch size is too small, stopping")
-                            raise RuntimeError("No further batch size reduction is possible, stopping")
-
-                        self.backend_config[BACKEND_BATCH_SIZE_KW] = new_batch_size
-                        # check the latest version of potential, update bbasisconfig to restart
-                        try:
-                            log.info("Attempt to get last version of potential")
-                            bbasisconfig = self.fitter.tensorpot.potential.get_updated_config()
-                            log.info("Last version of potential is extracted")
-                        except Exception as e:
-                            log.error("Can not get last version of potential: {}".format(e))
-                    else:
-                        log.error("Use `backend:batch_size_reduction` option for automatic batch size reduction")
-                        raise RuntimeError("{} errors encountered. " +
-                                           "Consider using `backend::{}=true` option for automatic batch size reduction".format(
-                                               e,
-                                               BACKEND_BATCH_SIZE_REDUCTION_KW))
                 except Exception as e:
-                    raise e
+                    if not is_oom_error(e):
+                        raise e
+                    # keep only the message: the exception's traceback would keep the failed tensors alive
+                    oom_message = str(e)
+
+                log.error("{} errors encountered".format(oom_message))
+                if self.backend_config.get(BACKEND_BATCH_SIZE_REDUCTION_KW, True):
+                    batch_size = self.backend_config.get(BACKEND_BATCH_SIZE_KW, 10)
+                    batch_size_reduction_factor = self.backend_config.get(BACKEND_BATCH_SIZE_REDUCTION_FACTOR_KW,
+                                                                          1.618)  # default - golden ratio
+                    new_batch_size = int(batch_size / batch_size_reduction_factor)
+                    log.info("Decrease batch size (by factor {}): {} -> {}".format(batch_size_reduction_factor,
+                                                                                   batch_size, new_batch_size))
+                    if new_batch_size < 1:
+                        log.error("New batch size is too small, stopping")
+                        raise RuntimeError("No further batch size reduction is possible, stopping")
+
+                    self.backend_config[BACKEND_BATCH_SIZE_KW] = new_batch_size
+                    # check the latest version of potential, update bbasisconfig to restart
+                    try:
+                        log.info("Attempt to get last version of potential")
+                        bbasisconfig = self.fitter.tensorpot.potential.get_updated_config()
+                        log.info("Last version of potential is extracted")
+                    except Exception as e:
+                        log.error("Can not get last version of potential: {}".format(e))
+                    self.fitter = None
+                    self._release_gpu_memory()
+                else:
+                    log.error("Use `backend:batch_size_reduction` option for automatic batch size reduction")
+                    raise RuntimeError(("{} errors encountered. " +
+                                        "Consider using `backend::{}=true` option for automatic batch size reduction"
+                                        ).format(oom_message, BACKEND_BATCH_SIZE_REDUCTION_KW))
 
         elif self.backend_config.evaluator_name == PYACE_EVAL:
             self.setup_pyace(bbasisconfig, dataframe, loss_spec, trainable_parameters_dict)
@@ -152,9 +163,9 @@ class FitBackendAdapter:
 
     def get_evaluator_version_dict(self):
         try:
-            if self.backend_config.evaluator_name == TENSORPOT_EVAL:
-                import tensorpotential
-                return {TENSORPOT_EVAL + "_version": tensorpotential.__version__}
+            if self.backend_config.evaluator_name == TORCHPOT_EVAL:
+                import torchpotential
+                return {TORCHPOT_EVAL + "_version": torchpotential.__version__}
             elif self.backend_config.evaluator_name == PYACE_EVAL:
                 from pyace import __version__, get_ace_evaluator_version
                 return {PYACE_EVAL + "_version": __version__, "ace_evaluator_version": get_ace_evaluator_version()}
@@ -164,30 +175,33 @@ class FitBackendAdapter:
             log.error(e)
         return {}
 
-    def setup_tensorpot(self, bbasisconfig: BBasisConfiguration, dataframe: pd.DataFrame,
-                        loss_spec: LossFunctionSpecification,
-                        trainable_parameters_dict: Dict
-                        ) -> BBasisConfiguration:
-        try:
-            from tensorpotential.compat.pace.potentials.ace import ACE
-            from tensorpotential.compat.pace.tensorpot import TensorPotential
-            from tensorpotential.compat.pace.fit import FitTensorPotential
-            from tensorpotential.compat.pace.utils.utilities import batching_data, init_gpu_config
-            from tensorpotential.compat.pace.constants import (LOSS_TYPE, LOSS_FORCE_FACTOR, LOSS_ENERGY_FACTOR, L1_REG,
-                                                   L2_REG, AUX_LOSS_FACTOR)
-        except ImportError:
-            from tensorpotential.potentials.ace import ACE
-            from tensorpotential.tensorpot import TensorPotential
-            from tensorpotential.fit import FitTensorPotential
-            from tensorpotential.utils.utilities import batching_data, init_gpu_config
-            from tensorpotential.constants import (LOSS_TYPE, LOSS_FORCE_FACTOR, LOSS_ENERGY_FACTOR, L1_REG,
-                                                               L2_REG, AUX_LOSS_FACTOR)
+    def _release_gpu_memory(self):
+        """Drop the failed fit and give cached GPU memory back before retrying with smaller batches."""
+        import gc
+        import torch
+
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    def setup_torchpot(self, bbasisconfig: BBasisConfiguration, dataframe: pd.DataFrame,
+                       loss_spec: LossFunctionSpecification,
+                       trainable_parameters_dict: Dict
+                       ) -> BBasisConfiguration:
+        from torchpotential.potentials.ace import ACE
+        from torchpotential.torchpot import TorchPotential
+        from torchpotential.fit import FitTorchPotential
+        from torchpotential.utils.utilities import batching_data, init_gpu_config
+        from torchpotential.utils.device import set_num_threads
+        from torchpotential.constants import (LOSS_TYPE, LOSS_FORCE_FACTOR, LOSS_ENERGY_FACTOR, L1_REG,
+                                              L2_REG, AUX_LOSS_FACTOR)
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
 
             gpu_config = self.backend_config.get(BACKEND_GPU_CONFIG, None)
             init_gpu_config(gpu_config)
+            set_num_threads(self.backend_config.get(BACKEND_NUM_THREADS_KW, None))
             batch_size = self.backend_config.get(BACKEND_BATCH_SIZE_KW, 10)
             log.info("Loss function specification: " + str(loss_spec))
             log.info("Batch size: {}".format(batch_size))
@@ -215,22 +229,22 @@ class FitBackendAdapter:
 
             ace_potential = ACE(bbasisconfig, compute_orthogonality=has_orthogonality,
                                 compute_smoothness=has_smoothness)
-            tensorpotential = TensorPotential(ace_potential, loss_specs=loss_specs)
+            torchpotential = TorchPotential(ace_potential, loss_specs=loss_specs)
 
             display_step = self.backend_config.get('display_step', 20)
-            self.fitter = FitTensorPotential(tensorpotential, display_step=display_step)
+            self.fitter = FitTorchPotential(torchpotential, display_step=display_step)
             # assign total_number_of_functions to fitter
             total_number_of_functions = bbasisconfig.total_number_of_functions
             self.fitter.nfuncs = total_number_of_functions
 
-    def run_tensorpot_fit(self, bbasisconfig: BBasisConfiguration, dataframe: pd.DataFrame,
+    def run_torchpot_fit(self, bbasisconfig: BBasisConfiguration, dataframe: pd.DataFrame,
                           loss_spec: LossFunctionSpecification, fit_config: Dict,
                           trainable_parameters_dict: Dict,
                           test_dataframe: pd.DataFrame = None
                           ) -> BBasisConfiguration:
 
         with warnings.catch_warnings():
-            # adapt call of self._callback(current_bbasisconfig) from FitTensorPotential.callback(coeffs)
+            # adapt call of self._callback(current_bbasisconfig) from FitTorchPotential.callback(coeffs)
             def adapted_callback(coeffs):
                 new_config = self.fitter.tensorpot.potential.get_updated_config(updating_coefs=coeffs)
                 self._callback(new_config)
@@ -311,18 +325,13 @@ class FitBackendAdapter:
         if bbasisconfig is None:
             raise ValueError("`bbasisconfig` couldn't be None for FitAdapter.setup_backend_for_predict")
         log.info("Setting {} backend for predicting".format(self.backend_config.evaluator_name))
-        if self.backend_config.evaluator_name == TENSORPOT_EVAL:
-            try:
-                from tensorpotential.compat.pace.potentials.ace import ACE
-                from tensorpotential.compat.pace.tensorpot import TensorPotential
-                from tensorpotential.compat.pace.fit import FitTensorPotential
-            except ImportError:
-                from tensorpotential.potentials.ace import ACE
-                from tensorpotential.tensorpot import TensorPotential
-                from tensorpotential.fit import FitTensorPotential
+        if self.backend_config.evaluator_name == TORCHPOT_EVAL:
+            from torchpotential.potentials.ace import ACE
+            from torchpotential.torchpot import TorchPotential
+            from torchpotential.fit import FitTorchPotential
             ace_pot = ACE(bbasisconfig)
-            tp = TensorPotential(ace_pot)
-            self.fitter = FitTensorPotential(tensorpot=tp, eager=True)
+            tp = TorchPotential(ace_pot)
+            self.fitter = FitTorchPotential(tensorpot=tp, eager=True)
         elif self.backend_config.evaluator_name == PYACE_EVAL:
             from pyace import PyACEFit
             self.fitter = PyACEFit(bbasisconfig)
@@ -384,7 +393,7 @@ class FitBackendAdapter:
 
     @property
     def last_loss(self):
-        if self.backend_config.evaluator_name == TENSORPOT_EVAL:
+        if self.backend_config.evaluator_name == TORCHPOT_EVAL:
             return self.fitter.loss_history[-1]
         elif self.backend_config.evaluator_name == PYACE_EVAL:
             return self.fitter.last_loss

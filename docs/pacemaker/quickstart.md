@@ -155,11 +155,11 @@ nohup pacemaker input.yaml &
 ```
 For more `pacemaker` command options see the corresponding [CLI](cli.md).  
 
-Default behavior of pacemaker is to utilize a GPU accelerated fitting of ACE using `tensorpotential`. However, 
+Default behavior of pacemaker is to utilize a GPU accelerated fitting of ACE using `torchpotential` (PyTorch). However, 
 parallelization over multiple GPU is not supported at the moment. Therefore, if your machine has a multi GPU setup one would need to select
 a single one before running `pacemaker`. This can be done by executing  `export CUDA_VISIBLE_DEVICES=ind` in the shell
 replacing `ind` with the GPU index (i.g. 0, 1, ...) or -1 to disable GPU usage.  
-Note, that `tensorpotential` can be used without a GPU as well.
+Note, that `torchpotential` can be used without a GPU as well.
 
 ## Analysis
 

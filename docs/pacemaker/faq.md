@@ -25,9 +25,20 @@ allows to consume the whole available memory.
 NOTE: memory reserved by the fitting process is not available to anything else. Therefore, it's recommended to set this 
 restriction if you also use the same machine for processes requiring GUI.
 
-## I dont have a GPU. Should I use backend, evaluator= `tensorpotential` or `pyace`?
-It is recommended to use `tensorpotential` evaluator for fitting anyways. Even without GPU acceleration non-linear 
-optimization greatly benefits from autogradients provided by TensorFlow.
+## I dont have a GPU. Should I use backend, evaluator= `torchpot` or `pyace`?
+It is recommended to use `torchpot` evaluator for fitting anyways. Even without GPU acceleration non-linear 
+optimization greatly benefits from the autogradients provided by PyTorch.
+
+## Fitting on the CPU is slow, what can I do?
+By default PyTorch uses all CPU cores. On a busy or shared machine this can be dramatically slower than using
+a few threads (for small data sets a single thread is often the fastest). Limit the threads with
+`input.yaml::backend::num_threads` or with the `TORCHPOTENTIAL_NUM_THREADS` environment variable (which takes precedence):
+```yaml
+backend:
+  evaluator: torchpot
+  num_threads: 4
+```
+For small data sets the CPU can also be faster than the GPU (`gpu_config: {gpu_ind: -1}`).
 
 ## How to continue fitting ?
 Fitting an ACE potential can be continued or restarted from any `.yaml` potential file produced previously.  
