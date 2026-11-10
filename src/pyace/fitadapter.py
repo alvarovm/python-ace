@@ -183,6 +183,11 @@ class FitBackendAdapter:
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+        if hasattr(torch, "xpu") and torch.xpu.is_available():
+            try:
+                torch.xpu.empty_cache()
+            except Exception:
+                pass
 
     def setup_torchpot(self, bbasisconfig: BBasisConfiguration, dataframe: pd.DataFrame,
                        loss_spec: LossFunctionSpecification,

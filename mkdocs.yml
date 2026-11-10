@@ -33,4 +33,5 @@ nav:
     - Input file: pacemaker/inputfile.md
     - CLI: pacemaker/cli.md
     - Utilities: pacemaker/utilities.md
+    - Running on XPU: pacemaker/runxpu.md
     - FAQs: pacemaker/faq.md
