@@ -11,6 +11,7 @@ Example::
 
     python benchmarks/bench_fit.py --dataset data.extxyz --gpus 0 --batch-size 1000 --iterations 20
     python benchmarks/bench_fit.py --dataset data.extxyz --gpus 0,1,2,3 --batch-size 250 --repeats 3
+    python benchmarks/bench_fit.py --dataset data.extxyz --gpus 0,1 --device xpu --batch-size 250 --iterations 20
 
 Timings per evaluation are read from the pacemaker log ("Time/eval") for the accepted iterates; the first
 ``--warmup-evals`` of them are excluded from the statistics (device/index set-up happens there). ``fit_seconds`` is
@@ -33,6 +34,8 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (CONFIGS_DIR, RESULTS_DIR, busy_warnings, environment_info, gpu_status,  # noqa: E402
                     sha256_file, sha256_json, write_json)
+
+ACCELERATORS = ["cuda", "xpu"]
 
 # options that make scipy run exactly --iterations iterations instead of stopping at its tolerances
 FIXED_ITERATION_OPTIONS = {
@@ -60,6 +63,8 @@ def parse_args(argv=None):
     p.add_argument("--batch-size", type=int, default=100, help="structures per batch (backend::batch_size)")
     p.add_argument("--gpus", default="0",
                    help="comma-separated GPU indices (several = multi-GPU fit), 'all', or -1 for the CPU")
+    p.add_argument("--device", default="auto", choices=["auto"] + ACCELERATORS,
+                   help="accelerator for --gpus: auto (CUDA when visible, else XPU), cuda or xpu")
     p.add_argument("--num-threads", type=int, default=None, help="CPU threads per process (also OMP_NUM_THREADS)")
     p.add_argument("--warmup-evals", type=int, default=1,
                    help="first evaluations excluded from the per-evaluation statistics")
@@ -152,15 +157,27 @@ def count_pairs(frames, cutoff):
 # ----------------------------------------------------------------------------------------------------
 # pacemaker input
 # ----------------------------------------------------------------------------------------------------
-def parse_gpus(text):
-    """``(gpu_ind for the backend config, list of requested indices)``; ``-1`` is the CPU."""
+def parse_gpus(text, device="auto"):
+    """``(gpu_ind for the backend config, list of requested indices)``; ``-1`` is the CPU.
+
+    ``device`` is ``auto`` (CUDA when visible, otherwise XPU), ``cuda`` or ``xpu``; an explicit device must be available.
+    """
     text = str(text).strip().lower()
-    if text == "all":
+    if device != "auto" and device not in ACCELERATORS:
+        raise ValueError("invalid --device {!r}".format(device))
+    if device != "auto":
         import torch
 
-        idx = list(range(torch.cuda.device_count()))
+        if not getattr(torch, device).is_available():
+            raise ValueError("--device {}: {} is not available on this host".format(device, device.upper()))
+    if text == "all":
+        from torchpotential.utils.device import _available_accelerator
+        import torch
+
+        accelerator = device if device != "auto" else _available_accelerator()
+        idx = list(range(getattr(torch, accelerator).device_count())) if accelerator else []
         if not idx:
-            raise ValueError("--gpus all: no CUDA device is visible")
+            raise ValueError("--gpus all: no CUDA or XPU device is visible")
     else:
         idx = [int(t) for t in text.split(",") if t.strip() != ""]
     if not idx or (len(idx) > 1 and min(idx) < 0) or min(idx) < -1:
@@ -280,10 +297,12 @@ def summarize_run(records, fit_seconds, warmup_evals):
 # ----------------------------------------------------------------------------------------------------
 # running
 # ----------------------------------------------------------------------------------------------------
-def run_pacemaker(run_dir, args):
+def run_pacemaker(run_dir, args, gpu_list):
     env = dict(os.environ)
     for var in ("TORCHPOTENTIAL_DEVICE", "TORCHPOTENTIAL_DEVICES"):
         env.pop(var, None)  # the backend config (--gpus) must decide
+    if args.device != "auto" and gpu_list != [-1]:
+        env["TORCHPOTENTIAL_DEVICES"] = ",".join("{}:{}".format(args.device, i) for i in gpu_list)
     if args.num_threads:
         env["OMP_NUM_THREADS"] = str(args.num_threads)
     code = ("import sys; from pyace.cli.pacemaker import main; sys.argv[0] = 'pacemaker'; "
@@ -306,7 +325,7 @@ def main(argv=None):
     dataset = Path(args.dataset)
     if not dataset.is_file():
         sys.exit("dataset not found: {}".format(dataset))
-    gpu_ind, gpu_list = parse_gpus(args.gpus)
+    gpu_ind, gpu_list = parse_gpus(args.gpus, args.device)
 
     yaml = YAML(typ="safe")
     yaml.default_flow_style = False
@@ -322,6 +341,8 @@ def main(argv=None):
 
     label = args.label or dataset.stem
     gpus_tag = "cpu" if gpu_list == [-1] else "gpu" + "-".join(str(g) for g in gpu_list)
+    if args.device != "auto" and gpu_list != [-1]:
+        gpus_tag = args.device + "-".join(str(g) for g in gpu_list)
     base = Path(args.output_dir) / "{}_{}_{}".format(label, gpus_tag, time.strftime("%Y%m%d-%H%M%S"))
     base.mkdir(parents=True, exist_ok=False)
     dataset_pickle = base / "dataset.pckl.gzip"
@@ -339,7 +360,7 @@ def main(argv=None):
                      elements=elements, pairs=count_pairs(frames, cutoff) if args.count_pairs and cutoff else None,
                      replicated_data_is_not_independent=args.replicate > 1),
         potential=dict(sha256=sha256_json(inp["potential"]), rcut=cutoff, template=str(args.template)),
-        backend=dict(gpu_ind=gpu_ind, devices=gpu_list, ranks=len(gpu_list), batch_size=args.batch_size,
+        backend=dict(gpu_ind=gpu_ind, devices=gpu_list, device=args.device, ranks=len(gpu_list), batch_size=args.batch_size,
                      num_threads=args.num_threads, optimizer=args.optimizer, iterations=args.iterations,
                      warmup_evals=args.warmup_evals),
         environment=environment_info(),
@@ -359,7 +380,7 @@ def main(argv=None):
         run_dir.mkdir()
         (run_dir / "input.yaml").write_text((base / "input.yaml").read_text())
         gpus_before = gpu_status()
-        returncode, wall = run_pacemaker(run_dir, args)
+        returncode, wall = run_pacemaker(run_dir, args, gpu_list)
         run = dict(run_dir=str(run_dir), returncode=returncode, wall_seconds=wall, gpus_before=gpus_before,
                    gpus_after=gpu_status())
         stdout_text = (run_dir / "stdout.txt").read_text(errors="replace")

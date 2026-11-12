@@ -76,13 +76,19 @@ def environment_info():
         load_average=list(os.getloadavg()) if hasattr(os, "getloadavg") else None,
         gpus=gpu_status(),
         env={k: v for k, v in os.environ.items()
-             if k.startswith(("OMP_", "MKL_", "TORCHPOTENTIAL_", "CUDA_VISIBLE"))},
+             if k.startswith(("OMP_", "MKL_", "TORCHPOTENTIAL_", "CUDA_VISIBLE", "ZE_", "ONEAPI_", "SYCL_"))},
     )
     try:
         import torch
         info["torch"] = torch.__version__
         info["cuda"] = torch.version.cuda
         info["cuda_device_count"] = torch.cuda.device_count()
+        info["xpu_device_count"] = torch.xpu.device_count() if hasattr(torch, "xpu") else 0
+        info["xpu_devices"] = [
+            dict(index=i, name=torch.xpu.get_device_properties(i).name,
+                 memory_total_mib=torch.xpu.get_device_properties(i).total_memory // (1024 * 1024))
+            for i in range(info["xpu_device_count"])
+        ]
     except Exception as exc:
         info["torch"] = "unavailable: {}".format(exc)
     try:

@@ -11,19 +11,27 @@ this parameter is totally empirical as it depends on data, potential configurati
 
 
 ## Can I toggle between CPU and GPU when starting pacemaker?
-If you have GPU configured on your machine it will be used by default.
+The `torchpot` backend selects CUDA, then Intel XPU, then CPU by default (one device).
 You can have additional control over GPU configuration via  `input.yaml::backend::gpu_config`:
 ```yaml
 backend:
-  gpu_config: {gpu_ind: <int>, mem_limit: <int>}
+  evaluator: torchpot
+  gpu_config: {gpu_ind: 0, mem_limit: 0}
 ```
- - `gpu_ind`: index of the GPU you want to use for fitting. This need to be specified in case your
-machine has multiple GPUs. Set this parameter to -1 to disable GPU utilization. A list of indices fits on several
-GPUs at once (see [below](#can_i_fit_on_several_gpus)). Default is 0.
- - `mem_limit`: maximum amount of GPU memory in MB that is allowed to be used by fitting process. Default is 0 which 
-allows to consume the whole available memory.  
-NOTE: memory reserved by the fitting process is not available to anything else. Therefore, it's recommended to set this 
-restriction if you also use the same machine for processes requiring GUI.
+ - `gpu_ind`: a GPU index, or a list of indices for a multi-GPU fit (see [below](#can_i_fit_on_several_gpus)).
+   Default is `0`; `-1` selects CPU. Numeric indices use CUDA if available, otherwise XPU.
+ - `mem_limit`: cap on each process's CUDA/XPU caching allocator in MB; default `0` means no cap.
+   It does not reserve memory or guarantee it is available. If two processes share one GPU, each has its own cap.
+
+Device environment variables override the YAML indices: `TORCHPOTENTIAL_DEVICES` wins over
+`TORCHPOTENTIAL_DEVICE`, which wins over `gpu_ind`. To force CPU:
+
+```bash
+unset TORCHPOTENTIAL_DEVICES
+TORCHPOTENTIAL_DEVICE=cpu pacemaker input.yaml
+```
+
+`CUDA_VISIBLE_DEVICES=-1` alone does not disable XPU.
 
 ## Can I fit on several GPUs?
 Yes, with the `torchpot` evaluator and a list of GPU indices:
@@ -36,20 +44,21 @@ backend:
 ```
 `pacemaker` starts one worker process per additional GPU. The batches of the training set are spread over the GPUs
 (the batches themselves are the same as in a single-GPU fit, so loss, regularisation and metrics are unchanged, up to
-rounding), and only the coefficients and gradients are exchanged at every evaluation. `mem_limit` applies to each GPU.
+rounding), and coefficients, gradients and residuals are exchanged at every evaluation. `mem_limit` applies to each
+process, including the main process when devices are selected through the environment.
 A step-by-step guide is in the [multi-GPU tutorial](multi_gpu.md).
 Notes:
 
- - It pays off only for large data sets: the evaluation of one batch is limited by kernel launches below about
-30000 atoms, where a second GPU does not help. Use at least 4 batches per GPU (i.e. a smaller `batch_size`);
-`pacemaker` warns when there are too few batches.
+ - Use enough work per GPU to offset process and communication overhead. At least 4 batches per GPU is a useful
+starting point; `pacemaker` warns when there are too few batches. Measure scaling on your own dataset and hardware.
  - Supported optimizers: `BFGS`, `L-BFGS-B`, `CG` (and `dual_annealing`). `Adam`, `SGD`, `trf`, `dogbox` and `lm`
 are not available on several GPUs. The test set is evaluated on the first GPU only.
  - Repeating an index (`gpu_ind: [0, 0]`) runs several processes on one GPU. The environment variable
-`TORCHPOTENTIAL_DEVICES=cuda:0,cuda:1` (also `cpu`) overrides `gpu_config`. `TORCHPOTENTIAL_DEVICE` (a single
-device) disables multi-GPU fitting.
- - Linux/POSIX only. If a worker fails or dies, the fit stops with an error; out-of-memory errors of a worker trigger
-the usual `batch_size_reduction`.
+`TORCHPOTENTIAL_DEVICES=cuda:0,cuda:1` or `xpu:0,xpu:1` (also `cpu`) overrides `gpu_config` and
+`TORCHPOTENTIAL_DEVICE`. A single `TORCHPOTENTIAL_DEVICE` disables multi-GPU fitting unless the plural variable is set.
+ - Intel XPU supports the same list configuration when CUDA is unavailable; see [Running on XPU](runxpu.md).
+ - Single-node Linux/POSIX only. Launch one `pacemaker` process, not one MPI rank per GPU. If a worker fails or dies,
+the fit stops with an error; out-of-memory errors of a worker trigger the usual `batch_size_reduction`.
 
 ## I dont have a GPU. Should I use backend, evaluator= `torchpot` or `pyace`?
 It is recommended to use `torchpot` evaluator for fitting anyways. Even without GPU acceleration non-linear 
@@ -314,4 +323,3 @@ In a normal situation, `relative_loss_per_iter` should be negative and large in 
 Stopping occurs when **any** of the following criteria are met *each* step over the last `early_stopping_patience` steps:
 * `relative_TRAIN_loss_per_iter > -|min_relative_train_loss_per_iter|`
 * `relative_TEST_loss_per_iter > -|min_relative_test_loss_per_iter|`
- 

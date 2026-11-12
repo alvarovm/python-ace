@@ -192,6 +192,8 @@ class FitBackendAdapter:
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+        if hasattr(torch, "xpu") and torch.xpu.is_available():
+            torch.xpu.empty_cache()
         self._release_pool()
 
     def _release_pool(self):

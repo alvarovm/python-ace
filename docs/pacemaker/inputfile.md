@@ -364,13 +364,18 @@ backend:
   # batch_size_reduction: True # automatic batch_size reduction if not enough memory (default - True) 
   # batch_size_reduction_factor: 1.618  # batch size reduction factor
   # display_step: 20          # frequency of detailed metric calculation and printing
-  # gpu_config: {gpu_ind: 0, mem_limit: 0}  # GPU index (-1 for CPU; a list, e.g. [0, 1], fits on several GPUs) and memory limit in MB per GPU
+  # gpu_config: {gpu_ind: 0, mem_limit: 0}  # GPU index (-1 for CPU; [0, 1] for several GPUs); allocator cap in MB per process
   # num_threads: 4            # number of CPU threads used by PyTorch per process (default: all cores, or cores / number of GPUs; env TORCHPOTENTIAL_NUM_THREADS takes precedence)
 ```
 
 Alternatively, backend could be selected as `pacemaker ... -b torchpot`
 
 For fits on several GPUs see the [multi-GPU tutorial](multi_gpu.md).
+GPU indices select CUDA when available, otherwise Intel XPU. To explicitly select XPUs, set
+`TORCHPOTENTIAL_DEVICES=xpu:0,xpu:1`; this overrides `TORCHPOTENTIAL_DEVICE` and the YAML indices.
+See [Running on XPU](runxpu.md) for Aurora setup. `mem_limit` caps each process's caching allocator on either backend.
+Multi-GPU fits support `BFGS`, `L-BFGS-B`, `CG` and `dual_annealing` on a single node. Launch one `pacemaker`
+process; workers are created automatically. The test set stays on the first device.
 
 ## Ladder (hiererchical) basis extension
 

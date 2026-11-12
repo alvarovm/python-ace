@@ -6,6 +6,9 @@
 
 Please use the navigation bar on the left to explore the documentation.
 
+For GPU fitting, start with the [multi-GPU tutorial](pacemaker/multi_gpu.md) for NVIDIA CUDA or Intel XPU.
+The [XPU guide](pacemaker/runxpu.md) covers the Aurora environment and GPU-tile selection.
+
 # Citation
 
 Please cite following papers:

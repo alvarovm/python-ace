@@ -12,6 +12,12 @@ Please follow the [installation instructions](https://pacemaker.readthedocs.io/e
 
 Please see the `docs` folder for documentation or check [online documentation](https://pacemaker.readthedocs.io/)
 
+For single-node fitting on several NVIDIA or Intel GPUs, see the [multi-GPU tutorial](docs/pacemaker/multi_gpu.md)
+and [Aurora/XPU guide](docs/pacemaker/runxpu.md). With compatible `distributed` versions of python-ace and
+TorchPotential, use `backend: {evaluator: torchpot, gpu_config: {gpu_ind: [0, 1]}}`, or explicitly select Intel
+devices with `TORCHPOTENTIAL_DEVICES=xpu:0,xpu:1 pacemaker input.yaml`. Launch one main process; it creates its
+own workers. This does not enable multi-node fitting.
+
 
 # Citation
 

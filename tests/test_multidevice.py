@@ -1,4 +1,6 @@
 """Fits on several devices (worker processes of torchpotential.distributed) must reproduce the single-device fit."""
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -27,6 +29,13 @@ fit_config = {
     "maxiter": 6,
     "loss": {"kappa": 0.5, "L1_coeffs": 1e-6, "L2_coeffs": 1e-6},
 }
+
+
+@pytest.fixture(autouse=True)
+def isolated_fit_directory(tmp_path, monkeypatch):
+    # GeneralACEFit writes potentials, metrics and plots into the working directory.
+    monkeypatch.setitem(data_config, "filename", str(Path(__file__).resolve().parent / "representative_df.pckl.gzip"))
+    monkeypatch.chdir(tmp_path)
 
 
 def run_fit(optimizer="BFGS", batch_size=1, **backend):
@@ -76,7 +85,8 @@ def test_unsupported_optimizer_with_several_devices(cpu_serial, monkeypatch):
         run_fit("trf")
 
 
-def test_out_of_memory_on_a_worker_reduces_the_batch_size(cpu_serial, monkeypatch):
+@pytest.mark.parametrize("accelerator", ["CUDA", "XPU"])
+def test_out_of_memory_on_a_worker_reduces_the_batch_size(accelerator, cpu_serial, monkeypatch):
     from torchpotential.distributed import DevicePool, WorkerError
 
     monkeypatch.setenv("TORCHPOTENTIAL_DEVICES", "cpu,cpu")
@@ -86,7 +96,7 @@ def test_out_of_memory_on_a_worker_reduces_the_batch_size(cpu_serial, monkeypatc
     def failing_once(self, *args, **kwargs):
         calls.append(1)
         if len(calls) == 1:
-            raise WorkerError("worker rank 1 failed during setup: OutOfMemoryError: CUDA out of memory")
+            raise WorkerError("worker rank 1 failed during setup: OutOfMemoryError: {} out of memory".format(accelerator))
         return original(self, *args, **kwargs)
 
     monkeypatch.setattr(DevicePool, "setup", failing_once)
@@ -94,3 +104,36 @@ def test_out_of_memory_on_a_worker_reduces_the_batch_size(cpu_serial, monkeypatc
     assert len(calls) == 2
     assert fitace.fit_backend.backend_config["batch_size"] == 1  # int(3 / 1.618)
     assert np.all(np.isfinite(coefs))
+
+
+def test_xpu_memory_is_released_before_retrying(monkeypatch):
+    import torch
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from pyace.fitadapter import FitBackendAdapter
+
+    api = SimpleNamespace(is_available=lambda: True, empty_cache=Mock())
+    monkeypatch.setattr(torch, "xpu", api, raising=False)
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+    adapter = FitBackendAdapter({"evaluator": "torchpot"})
+    adapter._pool = Mock()
+    adapter._release_gpu_memory()
+    api.empty_cache.assert_called_once_with()
+    adapter._pool.release.assert_called_once_with()
+
+
+@pytest.mark.parametrize("selection", ["yaml", "env"])
+def test_two_xpus_reproduce_the_cpu_fit(selection, cpu_serial, monkeypatch):
+    import torch
+
+    if not hasattr(torch, "xpu") or not torch.xpu.is_available() or torch.xpu.device_count() < 2:
+        pytest.skip("needs two XPU devices")
+    serial, _ = run_fit()
+    if selection == "env":
+        monkeypatch.setenv("TORCHPOTENTIAL_DEVICES", "xpu:0,xpu:1")
+    else:
+        monkeypatch.delenv("TORCHPOTENTIAL_DEVICE")
+    dist, fitace = run_fit(gpu_config={"gpu_ind": [0, 1], "mem_limit": 8192})
+    assert fitace.fit_backend.fitter.tensorpot.device == torch.device("xpu:0")
+    assert fitace.fit_backend.fitter.pool.devices == ["xpu:0", "xpu:1"]
+    np.testing.assert_allclose(dist, serial, rtol=1e-6, atol=1e-8)

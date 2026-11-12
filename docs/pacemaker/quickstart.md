@@ -155,11 +155,34 @@ nohup pacemaker input.yaml &
 ```
 For more `pacemaker` command options see the corresponding [CLI](cli.md).  
 
-Default behavior of pacemaker is to utilize a GPU accelerated fitting of ACE using `torchpotential` (PyTorch). However, 
-parallelization over multiple GPU is not supported at the moment. Therefore, if your machine has a multi GPU setup one would need to select
-a single one before running `pacemaker`. This can be done by executing  `export CUDA_VISIBLE_DEVICES=ind` in the shell
-replacing `ind` with the GPU index (i.g. 0, 1, ...) or -1 to disable GPU usage.  
-Note, that `torchpotential` can be used without a GPU as well.
+The `torchpot` backend selects one CUDA GPU by default, otherwise one Intel XPU, otherwise CPU. To fit on several
+GPUs of one machine, use a list of device indices in `input.yaml` (with matching multi-device versions of both
+python-ace and TorchPotential):
+
+```yaml
+fit:
+  optimizer: BFGS
+backend:
+  evaluator: torchpot
+  batch_size: 10
+  num_threads: 4
+  gpu_config: {gpu_ind: [0, 1], mem_limit: 0}
+```
+
+Merge these settings into your existing `fit` and `backend` sections. Indices select CUDA when available, otherwise
+XPU. You can explicitly select the devices without editing the input:
+
+```bash
+TORCHPOTENTIAL_DEVICES=cuda:0,cuda:1 pacemaker input.yaml  # NVIDIA
+TORCHPOTENTIAL_DEVICES=xpu:0,xpu:1 pacemaker input.yaml    # Intel
+```
+
+Run only the command matching your hardware. Launch **one** `pacemaker` process; it creates its own workers.
+For supported optimizers, batch sizing and verification, see the [multi-GPU tutorial](multi_gpu.md).
+For Aurora environment setup and GPU-tile indices, see [Running on XPU](runxpu.md).
+
+To force a single CPU process, unset `TORCHPOTENTIAL_DEVICES` and set `TORCHPOTENTIAL_DEVICE=cpu`.
+`CUDA_VISIBLE_DEVICES` only controls CUDA visibility; it does not disable Intel XPU devices.
 
 ## Analysis
 

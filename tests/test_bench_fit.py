@@ -65,6 +65,35 @@ def test_gpus_option():
             bench_fit.parse_gpus(bad)
 
 
+@pytest.mark.torchpot
+@pytest.mark.parametrize("kind", ["cuda", "xpu", None])
+def test_all_gpus_option_uses_the_available_accelerator(monkeypatch, kind):
+    from torchpotential.utils import device as device_utils
+    import torch
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(device_utils, "_available_accelerator", lambda: kind)
+    if kind:
+        monkeypatch.setattr(torch, kind, SimpleNamespace(device_count=lambda: 3), raising=False)
+        assert bench_fit.parse_gpus("all") == ([0, 1, 2], [0, 1, 2])
+    else:
+        with pytest.raises(ValueError, match="no CUDA or XPU"):
+            bench_fit.parse_gpus("all")
+
+
+def test_gpus_option_with_explicit_device(monkeypatch):
+    import torch
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(torch, "xpu", SimpleNamespace(is_available=lambda: True, device_count=lambda: 2), raising=False)
+    assert bench_fit.parse_gpus("0,1", "xpu") == ([0, 1], [0, 1])
+    assert bench_fit.parse_gpus("all", "xpu") == ([0, 1], [0, 1])
+    with pytest.raises(ValueError, match="not available"):
+        bench_fit.parse_gpus("0", "cuda")
+    with pytest.raises(ValueError, match="invalid --device"):
+        bench_fit.parse_gpus("0", "rocm")
+
+
 def test_log_parsing():
     log = "\n".join([
         "2026/11/04 11:00:00 I - Iteration: #0     (1 evals):  Loss: 0.500000 | RMSE Energy(low): 120.00 (110.00) meV/at"
